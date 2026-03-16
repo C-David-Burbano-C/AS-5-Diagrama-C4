@@ -1,0 +1,272 @@
+@startuml C4_Level1_Context
+!include https://raw.githubusercontent.com/plantuml-stdlib/C4-PlantUML/master/C4_Context.puml
+
+title C4 - Nivel 1: Contexto del Sistema
+
+Person(usuario, "Usuario Final", "Cliente que usa la plataforma para comprar")
+Person(admin, "Administrador", "Gestor del sistema y contenido")
+
+System(sistema_pedidos, "Sistema de Pedidos", "Plataforma de pedidos en línea")
+
+System_Ext(paypal, "PayPal", "Procesamiento de pagos con PayPal")
+System_Ext(stripe, "Stripe", "Procesamiento de pagos con tarjeta")
+System_Ext(crypto, "Gateway Criptomonedas", "Procesamiento de pagos en cripto")
+System_Ext(email, "Servicio de Email", "Envío de notificaciones por correo")
+
+Rel(usuario, sistema_pedidos, "Registrarse, crear pedidos, pagar")
+Rel(admin, sistema_pedidos, "Gestionar sistema, ver reportes")
+Rel(sistema_pedidos, paypal, "Procesar pagos PayPal")
+Rel(sistema_pedidos, stripe, "Procesar pagos tarjeta")
+Rel(sistema_pedidos, crypto, "Procesar pagos cripto")
+Rel(sistema_pedidos, email, "Enviar notificaciones")
+
+@enduml
+
+@startuml C4_Level2_Containers
+!include https://raw.githubusercontent.com/plantuml-stdlib/C4-PlantUML/master/C4_Container.puml
+
+title C4 - Nivel 2: Contenedores del Sistema
+
+Person(usuario, "Usuario", "Usuario Final")
+Person(admin, "Administrador", "Admin del Sistema")
+
+Container(webapp, "Aplicación Web", "React/Angular", "Interfaz web del usuario")
+Container(mobileapp, "App Móvil", "React Native", "Aplicación móvil")
+
+Container(api_gateway, "API Gateway", "Kong/Nginx", "Punto de entrada, autenticación, rate limiting")
+
+Container(svc_usuarios, "Servicio Usuarios", "FastAPI/Python", "Registro, autenticación, perfiles")
+Container(svc_pedidos, "Servicio Pedidos", "FastAPI/Python", "Gestión de pedidos, orquestación")
+Container(svc_pagos, "Servicio Pagos", "FastAPI/Python", "Procesamiento de pagos")
+Container(svc_inventario, "Servicio Inventario", "FastAPI/Python", "Gestión de productos y stock")
+Container(svc_notificaciones, "Servicio Notificaciones", "Celery/Python", "Envío de notificaciones")
+
+ContainerDb(db_usuarios, "BD Usuarios", "PostgreSQL", "Datos de usuarios y autenticación")
+ContainerDb(db_pedidos, "BD Pedidos", "PostgreSQL", "Datos de pedidos")
+ContainerDb(db_pagos, "BD Pagos", "PostgreSQL", "Transacciones de pago")
+ContainerDb(db_inventario, "BD Inventario", "PostgreSQL", "Productos y stock")
+ContainerDb(cache, "Redis Cache", "Redis", "Caché distribuido")
+
+Container(broker, "Message Broker", "RabbitMQ", "Publicación/suscripción de eventos")
+
+System_Ext(paypal, "PayPal API", "Procesamiento de pagos")
+System_Ext(stripe, "Stripe API", "Procesamiento de pagos")
+System_Ext(crypto, "Crypto Gateway", "Procesamiento de cripto")
+System_Ext(email_svc, "Email Service", "Servicio de correo")
+
+Rel(usuario, webapp, "Usa", "HTTPS")
+Rel(usuario, mobileapp, "Usa", "HTTPS")
+Rel(admin, webapp, "Administra", "HTTPS")
+
+Rel(webapp, api_gateway, "Solicita", "REST/HTTPS")
+Rel(mobileapp, api_gateway, "Solicita", "REST/HTTPS")
+
+Rel(api_gateway, svc_usuarios, "Enruta", "REST")
+Rel(api_gateway, svc_pedidos, "Enruta", "REST")
+Rel(api_gateway, svc_pagos, "Enruta", "REST")
+Rel(api_gateway, svc_inventario, "Enruta", "REST")
+
+Rel(svc_usuarios, db_usuarios, "Lee/Escribe", "SQL")
+Rel(svc_pedidos, db_pedidos, "Lee/Escribe", "SQL")
+Rel(svc_pagos, db_pagos, "Lee/Escribe", "SQL")
+Rel(svc_inventario, db_inventario, "Lee/Escribe", "SQL")
+
+Rel(svc_usuarios, cache, "Caché sesiones", "GET/SET")
+Rel(svc_inventario, cache, "Caché productos", "GET/SET")
+
+Rel(svc_pedidos, broker, "Publica eventos", "AMQP")
+Rel(svc_inventario, broker, "Suscrito", "AMQP")
+Rel(svc_notificaciones, broker, "Suscrito", "AMQP")
+
+Rel(svc_notificaciones, email_svc, "Envía emails", "SMTP")
+
+Rel(svc_pagos, paypal, "API", "HTTPS")
+Rel(svc_pagos, stripe, "API", "HTTPS")
+Rel(svc_pagos, crypto, "API", "HTTPS")
+
+@enduml
+
+@startuml C4_Level3_PaymentService
+!include https://raw.githubusercontent.com/plantuml-stdlib/C4-PlantUML/master/C4_Component.puml
+
+title C4 - Nivel 3: Componentes - Servicio de Pagos
+
+Container_Boundary(svc_pagos, "Servicio de Pagos") {
+    Component(controller, "PaymentController", "FastAPI Endpoint", "Recibe POST /pay")
+    
+    Component(factory, "PaymentFactory", "Factory Pattern", "Crea procesadores dinámicamente")
+    
+    Component(interface, "PaymentProcessor", "Interfaz Abstracta", "Contrato para procesadores")
+    
+    Component(tarjeta, "TarjetaProcessor", "Strategy", "Procesa pagos con tarjeta")
+    Component(paypal, "PayPalProcessor", "Strategy", "Procesa pagos con PayPal")
+    Component(crypto, "CryptoProcessor", "Strategy", "Procesa pagos en cripto")
+    
+    Component(repository, "PaymentRepository", "Repository Pattern", "Acceso a datos")
+    
+    ComponentDb(db, "BD Pagos", "PostgreSQL", "Transacciones y auditoría")
+}
+
+System_Ext(stripe_api, "Stripe API", "Procesa tarjetas")
+System_Ext(paypal_api, "PayPal API", "Procesa PayPal")
+System_Ext(crypto_api, "Crypto Gateway", "Procesa cripto")
+
+Rel(controller, factory, "obtener_procesador(tipo)")
+Rel(factory, tarjeta, "retorna", "si tipo == tarjeta")
+Rel(factory, paypal, "retorna", "si tipo == paypal")
+Rel(factory, crypto, "retorna", "si tipo == cripto")
+
+Rel(tarjeta, interface, "implementa")
+Rel(paypal, interface, "implementa")
+Rel(crypto, interface, "implementa")
+
+Rel(controller, repository, "guardar_transaccion()")
+Rel(repository, db, "SQL")
+
+Rel(tarjeta, stripe_api, "API REST")
+Rel(paypal, paypal_api, "API REST")
+Rel(crypto, crypto_api, "API REST")
+
+@enduml
+
+@startuml C4_Level3_OrderService
+!include https://raw.githubusercontent.com/plantuml-stdlib/C4-PlantUML/master/C4_Component.puml
+
+title C4 - Nivel 3: Componentes - Servicio de Pedidos
+
+Container_Boundary(svc_pedidos, "Servicio de Pedidos") {
+    Component(controller, "OrderController", "FastAPI Endpoint", "Recibe POST /orders")
+    
+    Component(service, "OrderService", "Business Logic", "Orquesta creación de pedidos")
+    
+    Component(observer_interface, "OrderObserver", "Interfaz Abstracta", "Contrato para observadores")
+    
+    Component(inventory_obs, "InventoryObserver", "Observer", "Actualiza inventario")
+    Component(notification_obs, "NotificationObserver", "Observer", "Envía notificaciones")
+    Component(log_obs, "LogObserver", "Observer", "Registra eventos")
+    
+    Component(repository, "OrderRepository", "Repository Pattern", "Acceso a datos")
+    
+    Component(publisher, "EventPublisher", "Publicador", "Publica a RabbitMQ")
+    
+    ComponentDb(db, "BD Pedidos", "PostgreSQL", "Pedidos y detalles")
+}
+
+System_Ext(broker, "RabbitMQ", "Message Broker", "Sistema de eventos")
+
+Rel(controller, service, "crear_pedido()")
+
+Rel(service, observer_interface, "registra")
+Rel(observer_interface, inventory_obs, "implementa")
+Rel(observer_interface, notification_obs, "implementa")
+Rel(observer_interface, log_obs, "implementa")
+
+Rel(service, repository, "guardar_pedido()")
+Rel(repository, db, "SQL")
+
+Rel(service, publisher, "publicar_evento()")
+Rel(publisher, broker, "AMQP")
+
+Rel(service, inventory_obs, "notificar()")
+Rel(service, notification_obs, "notificar()")
+Rel(service, log_obs, "notificar()")
+
+@enduml
+
+@startuml Flujo_CrearPedido
+participant "Usuario" as usuario
+participant "API Gateway" as gateway
+participant "OrderService" as service
+participant "OrderRepository" as repo
+participant "OrderObserver\n(Multi)" as observers
+participant "EventPublisher" as publisher
+participant "RabbitMQ" as broker
+
+usuario -> gateway: POST /orders (datos)
+activate gateway
+
+gateway -> service: crear_pedido(datos)
+activate service
+
+service -> service: validar datos
+service -> service: crear objeto Order
+
+service -> repo: guardar(pedido)
+activate repo
+repo -> repo: INSERT en BD
+repo --> service: pedido_guardado
+deactivate repo
+
+service -> observers: registrar observadores
+service -> observers: notificar()
+activate observers
+observers -> observers: actualizar inventario
+observers -> observers: enviar notificaciones
+observers -> observers: registrar logs
+deactivate observers
+
+service -> publisher: publicar_evento('order.created')
+activate publisher
+publisher -> broker: push evento
+broker --> publisher: confirmado
+deactivate publisher
+
+service --> gateway: {pedido_id, estado}
+deactivate service
+
+gateway --> usuario: 201 Created + pedido
+deactivate gateway
+
+@enduml
+
+@startuml Flujo_Pago
+participant "Usuario" as usuario
+participant "API Gateway" as gateway
+participant "PaymentController" as controller
+participant "PaymentFactory" as factory
+participant "Procesador\n(Strategy)" as processor
+participant "Gateway Externo" as external
+participant "PaymentRepository" as repo
+participant "BD" as db
+
+usuario -> gateway: POST /payments (datos, tipo)
+activate gateway
+
+gateway -> controller: procesar_pago()
+activate controller
+
+controller -> factory: obtener_procesador(tipo)
+activate factory
+factory --> controller: procesador_instance
+deactivate factory
+
+controller -> processor: procesar_pago(monto, datos)
+activate processor
+
+processor -> external: API call
+activate external
+external --> processor: respuesta
+deactivate external
+
+processor --> controller: resultado
+deactivate processor
+
+controller -> repo: guardar_transaccion()
+activate repo
+repo -> db: INSERT transaccion
+deactivate repo
+
+alt Si exitoso
+    controller -> controller: actualizar estado pedido
+    controller -> controller: publicar evento
+else Si error
+    controller -> controller: retornar error
+end
+
+controller --> gateway: {estado, transaccion_id}
+deactivate controller
+
+gateway --> usuario: respuesta
+deactivate gateway
+
+@enduml
